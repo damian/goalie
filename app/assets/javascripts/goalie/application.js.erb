@@ -1,0 +1,125 @@
+// This is a manifest file that'll be compiled into application.js, which will include all the files
+// listed below.
+//
+// Any JavaScript/Coffee file within this directory, lib/assets/javascripts, vendor/assets/javascripts,
+// or vendor/assets/javascripts of plugins, if any, can be referenced here using a relative path.
+//
+// It's not advisable to add code directly here, but if you do, it'll appear at the bottom of the
+// the compiled file.
+//
+// WARNING: THE FIRST BLANK LINE MARKS THE END OF WHAT'S TO BE PROCESSED, ANY BLANK LINE SHOULD
+// GO AFTER THE REQUIRES BELOW.
+//
+//= require jquery
+//= require jquery_ujs
+//= require_tree .
+
+<%
+  path = Rails.application.routes.named_routes[:goalie].path
+  # Rails 3.2 returns a Journey::Path::Pattern object, Rails 3.1 an actual path.
+  path = path.respond_to?(:spec) ? path.spec.to_s : path
+%>
+
+var Goalie = {
+  BASE_PATH: <%= path.inspect %>,
+  ERRORS_PATH: <%= path.inspect %> + '/errors',
+  debugMode: <%= Rails.env.development? %>,
+  log: function(severity, message) {
+    $.ajax({
+      type: 'POST',
+      url: Goalie.ERRORS_PATH,
+      data: {
+        severity: severity,
+        message: message
+      }
+    });
+  },
+  ajaxError : function(ev, xhr, settings, err) {
+    console.log(ev);
+    console.log(xhr);
+    console.log(settings);
+    console.log(err);
+
+    console.log(settings.url);
+    console.log(xhr.status);
+    console.log(xhr.responseText);
+  }
+};
+
+
+if (typeof(window.log) !== "function") {
+  log = Goalie.log;
+};
+
+window.onerror = function(message, url, line) {
+  if (Goalie.debugMode) {
+    return false;
+  }
+  Goalie.log(1, message);
+  return true;
+};
+
+var oldHandler = $.event.dispatch;
+$.event.dispatch = function() {
+  try {
+    oldHandler.apply(this, arguments);
+  } catch(error) {
+    console.log(error);
+    console.log(error.stack);
+    console.log(error.message);
+    console.log(error.arguments);
+    console.log(error.fileName);
+    console.log(error.lineNumber);
+  }
+};
+
+var $document = $(document);
+
+// Not sure if this will always be called if there is a runtime
+// error in the success callback of the AJAX function
+$document.ajaxError(Goalie.ajaxError);
+
+$.ajaxPrefilter(function(options, orig, xhr) {
+  var success = options.success;
+  options.success = function() {
+    try {
+      success.apply(this, arguments);
+    } catch(e) {
+      console.log(e);
+    }
+  };
+});
+
+// Look in to ajaxPreFilter 
+var ready = $.fn.ready;
+
+$.fn.ready = function(fn) {
+  var x = function() {
+    try {
+      fn.apply(this, arguments);
+    } catch(e) {
+      console.log('Ready fail', e);
+      console.log(e.message);
+    }
+  };
+  console.log(x);
+  ready.apply(this, [x]);
+};
+
+$(document).ready(function() {
+  $('p').on('click', function() {
+    $.ajax({
+      url: '/foo',
+      type: 'POST',
+      success: function() {
+        blah;
+      }
+    })
+  }).trigger('click')
+});
+
+var Browser = {
+  CHROME: /(Chrome)\/([\d\.]+)/,
+  FIREFOX: /(Firefox)\/([\d\.]+)/,
+  SAFARI: /Version\/([\d\.]+)\s(Safari)/
+};
